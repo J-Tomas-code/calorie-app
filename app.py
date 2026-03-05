@@ -3,14 +3,14 @@ import os
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(
-    page_title="AI热量与健康助手", 
+    page_title="热量与健康助手", 
     page_icon="🥑",
     layout="wide"
 )
 
 # --- 2. 侧边栏导航 ---
 st.sidebar.title("🥑 功能菜单")
-app_mode = st.sidebar.radio("请选择功能:", ["🔍 AI查食物热量", "🏃‍♂️ 算每日所需热量"])
+app_mode = st.sidebar.radio("请选择功能:", ["🔍 查食物热量", "🏃‍♂️ 算每日所需热量"])
 
 # --- 3. 尝试导入 OpenAI (带错误捕获) ---
 client = None
@@ -144,4 +144,5 @@ elif app_mode == "🏃‍♂️ 算每日所需热量":
 
 # --- 底部版权 ---
 st.sidebar.markdown("---")
-st.sidebar.caption("© 2024 个人健康助手")
+st.sidebar.caption("© 2026 冲哥健康助手")
+
