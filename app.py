@@ -55,7 +55,6 @@ if app_mode == "📸 拍照/文本查热量":
         with st.spinner("AI 正在识别中..."):
             try:
                 messages = []
-                # 这里的逻辑：有图用Qwen-VL，没图用DeepSeek
                 if uploaded_file:
                     base64_image = encode_image(uploaded_file)
                     messages = [{
@@ -65,7 +64,6 @@ if app_mode == "📸 拍照/文本查热量":
                             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                         ]
                     }]
-                    # 注意：如果图片识别报错，请检查硅基流动是否支持 Qwen-VL 免费版
                     model_name = "Qwen/Qwen2-VL-72B-Instruct" 
                 else:
                     messages = [
@@ -86,21 +84,19 @@ if app_mode == "📸 拍照/文本查热量":
                 st.error(f"分析失败: {e}")
 
 # ==========================================
-# 功能 2: 今日热量记账本 (✨新功能)
+# 功能 2: 今日热量记账本
 # ==========================================
 elif app_mode == "📝 今日热量记账本":
     st.title("📝 今日热量记账本")
-    st.caption("⚠️ 注意：刷新网页后记录会清空，请及时截图保存。")
+    st.caption("⚠️ 注意：刷新网页后记录会清空")
 
-    # --- 初始化记账数据 (Session State) ---
     if 'food_log' not in st.session_state:
-        st.session_state.food_log = [] # 这是一个列表，存吃过的东西
+        st.session_state.food_log = []
 
-    # --- 1. 设置目标区域 ---
     with st.expander("🎯 设置今日目标", expanded=True):
+        # 这里的 step=50 表示按一下加减号变 50
         target_cal = st.number_input("今日目标摄入 (kcal)", min_value=1000, max_value=5000, value=2000, step=50)
 
-    # --- 2. 记一笔区域 ---
     st.markdown("### ➕ 记一笔")
     col1, col2, col3 = st.columns([3, 2, 1])
     with col1:
@@ -108,73 +104,117 @@ elif app_mode == "📝 今日热量记账本":
     with col2:
         food_cal = st.number_input("热量 (kcal)", min_value=0, max_value=2000, value=0, step=10)
     with col3:
-        st.write("") # 占位
-        st.write("") # 占位
+        st.write("")
+        st.write("")
         add_btn = st.button("添加记录")
 
-    # 点击添加按钮后的逻辑
     if add_btn:
         if food_name and food_cal > 0:
-            # 把数据存到 session_state 里
             st.session_state.food_log.append({"name": food_name, "cal": food_cal})
             st.success(f"已添加: {food_name}")
         else:
             st.warning("请输入名称和大于0的热量")
 
-    # --- 3. 统计展示区域 ---
     st.markdown("---")
-    
-    # 计算总和
     total_intake = sum(item['cal'] for item in st.session_state.food_log)
     remaining = target_cal - total_intake
-    
-    # 进度条逻辑
     progress = min(total_intake / target_cal, 1.0)
     
     st.subheader("📊 今日统计")
-    
-    # 漂亮的指标卡片
     m1, m2, m3 = st.columns(3)
     m1.metric("目标热量", f"{target_cal} kcal")
     m2.metric("已摄入", f"{total_intake} kcal", delta=f"{total_intake} kcal", delta_color="inverse")
     m3.metric("还能吃", f"{remaining} kcal", delta=f"{remaining} kcal")
 
-    # 进度条
     if remaining < 0:
         st.error(f"🚨 警告：你已经超标 {abs(remaining)} kcal 了！")
         st.progress(1.0)
     else:
         st.progress(progress)
-        st.caption(f"进度: {int(progress*100)}%")
 
-    # --- 4. 详细列表 ---
     st.markdown("### 🧾 详细清单")
     if len(st.session_state.food_log) > 0:
         for i, item in enumerate(st.session_state.food_log):
             st.text(f"{i+1}. {item['name']} —— {item['cal']} kcal")
-            
-        # 清空按钮
         if st.button("🗑️ 清空所有记录"):
             st.session_state.food_log = []
-            st.rerun() # 重新运行刷新页面
+            st.rerun()
     else:
-        st.info("今天还没有记录哦，快去吃点什么吧~")
+        st.info("今天还没有记录哦")
 
 # ==========================================
-# 功能 3: 每日热量计算(TDEE)
+# 功能 3: 每日热量计算(TDEE) - 修复版
 # ==========================================
 elif app_mode == "🏃‍♂️ 每日热量计算(TDEE)":
     st.title("🏃‍♂️ 每日热量需求计算器")
-    # ... (为了节省篇幅，这里请把之前写好的计算器逻辑粘贴回来) ...
-    # 简版占位，记得用之前的代码替换这里
+    st.write("输入你的身体数据，计算维持体重、减肥或增重需要多少热量。")
+    st.markdown("---")
+
     col1, col2 = st.columns(2)
+    
     with col1:
         gender = st.radio("你的性别", ["男", "女"], horizontal=True)
-        age = st.number_input("年龄", 25)
-        height = st.number_input("身高", 170)
-    with col2:
-        weight = st.number_input("体重", 65)
-        activity = st.selectbox("活动量", ["久坐", "轻度", "中度", "重度"])
+        # 修复点：设置 min_value 为 10，这样你就可以从 25 减到 10 了
+        # step=1 表示点一下按钮增减 1 岁
+        age = st.number_input("年龄 (岁)", min_value=10, max_value=100, value=25, step=1)
         
-    if st.button("计算"):
-        st.info("这里显示计算结果 (请把之前的逻辑复制过来)")
+        # 修复点：身高同理
+        height = st.number_input("身高 (cm)", min_value=100, max_value=250, value=170, step=1)
+    
+    with col2:
+        # 修复点：体重设置 step=0.5，允许输入小数（例如 65.5 kg）
+        weight = st.number_input("体重 (kg)", min_value=30.0, max_value=200.0, value=65.0, step=0.5)
+        
+        activity_level = st.selectbox(
+            "日常活动量",
+            options=[
+                "久坐不动 (几乎不运动)",
+                "轻度活动 (每周运动 1-3 次)",
+                "中度活动 (每周运动 3-5 次)",
+                "高度活动 (每周运动 6-7 次)",
+                "专业运动 (体力工作或双倍训练)"
+            ]
+        )
+
+    # 活动系数
+    activity_multipliers = {
+        "久坐不动 (几乎不运动)": 1.2,
+        "轻度活动 (每周运动 1-3 次)": 1.375,
+        "中度活动 (每周运动 3-5 次)": 1.55,
+        "高度活动 (每周运动 6-7 次)": 1.725,
+        "专业运动 (体力工作或双倍训练)": 1.9
+    }
+
+    if st.button("计算我的热量需求 📊"):
+        # 计算 BMR (Mifflin-St Jeor 公式)
+        if gender == "男":
+            bmr = 10 * weight + 6.25 * height - 5 * age + 5
+        else:
+            bmr = 10 * weight + 6.25 * height - 5 * age - 161
+            
+        tdee = bmr * activity_multipliers[activity_level]
+
+        # 计算结果
+        maintain = int(tdee)
+        lose_slow = int(tdee * 0.85)
+        lose_fast = int(tdee * 0.75)
+        gain_weight = int(tdee * 1.15)
+
+        st.markdown("---")
+        st.subheader("📊 你的专属热量报告")
+        st.info(f"你的基础代谢率 (BMR): **{int(bmr)} kcal**")
+        
+        res_col1, res_col2, res_col3, res_col4 = st.columns(4)
+        
+        with res_col1:
+            st.metric(label="🟢 保持体重", value=f"{maintain}", delta="推荐")
+        with res_col2:
+            st.metric(label="🟡 慢慢减肥", value=f"{lose_slow}", delta="-15%", delta_color="inverse")
+        with res_col3:
+            st.metric(label="🔴 快速减肥", value=f"{lose_fast}", delta="-25%", delta_color="inverse")
+        with res_col4:
+            st.metric(label="💪 增肌/增重", value=f"{gain_weight}", delta="+15%")
+
+# --- 底部版权 ---
+st.sidebar.markdown("---")
+st.sidebar.caption("© 2026 冲哥健康助手")
